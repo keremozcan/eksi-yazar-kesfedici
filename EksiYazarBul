@@ -1,0 +1,147 @@
+import java.io.*;
+import java.util.*;
+import java.net.*;
+
+public class EksiYazarBul {
+	public static void main(String args[]) {
+		long startTime = System.currentTimeMillis();
+		System.setProperty("http.proxyHost", "proxy.mydomain.com");
+		System.setProperty("http.proxyPort", "8080");
+		Set<String> entryler = new TreeSet<String>();
+		Map<String, Set<String>> yazarlar = new TreeMap<String, Set<String>>();
+		System.out
+				.println("Aradığınız yazar hangi başlıklara yazmış olabilir?");
+		System.out.println("(Tamamlayınca Enter'a basın)");
+		Scanner c = new Scanner(System.in);
+		String input = "";
+		input = c.nextLine();
+		while (input.isEmpty()) {
+			System.out
+					.println("Hiç başlık girmediniz! Lütfen en az bir adet başlık girin");
+			input = c.nextLine();
+		}
+		while (!input.isEmpty()) {
+			entryler.add(input);
+			input = c.nextLine();
+		}
+		System.out.println("ekşisözlük taranıyor...");
+		for (String entry : entryler) {
+			int page = 1;
+			boolean firstPage = true;
+			boolean suggestedPage = false;
+			boolean nextPage = true;
+			String urlFix = "";
+			String pageID = "";
+			String entryFix = "";
+			while (nextPage) {
+				try {
+					nextPage = false;
+					String entryNoTr = entry.toLowerCase().replaceAll(" ", "-")
+							.replaceAll("ş", "s").replaceAll("ç", "c")
+							.replaceAll("ı", "i").replaceAll("ö", "o")
+							.replaceAll("ü", "u").replaceAll("ğ", "g");
+					if (firstPage) {
+						entryFix = entry.toLowerCase().replaceAll(" ", "%20")
+								.replaceAll("ş", "%C5%9F")
+								.replaceAll("ç", "%C3%A7")
+								.replaceAll("ı", "%C4%B1")
+								.replaceAll("ö", "%C3%B6")
+								.replaceAll("ü", "%C3%BC")
+								.replaceAll("ğ", "%C4%9F");
+						urlFix = "https://eksisozluk.com/" + entryFix;
+					} else {
+						urlFix = "https://eksisozluk.com/" + pageID + "?p="
+								+ page;
+					}
+					URL url = new URL(urlFix);
+					InputStream inputStream = url.openStream();
+					Scanner reader = new Scanner(inputStream);
+					while (reader.hasNextLine()) {
+						Scanner token = new Scanner(reader.nextLine());
+						while (token.hasNext()) {
+							String word = token.next();
+							if (word.startsWith("class=\"suggested")) {
+								suggestedPage = true;
+								String next = token.next();
+								pageID = next.substring(7, next.length() - 6
+										- entryFix.length());
+								page--;
+							} else if (firstPage) {
+								if (word.startsWith("href=\"/" + entryNoTr)) {
+									pageID = word.substring(7,
+											word.length() - 1);
+									firstPage = false;
+								}
+
+							} else if (word.startsWith("data-currentpage")) {
+								String compare = token.next();
+								if (!nextPage
+										&& !word.substring(17).equals(
+												compare.substring(15,
+														compare.length() - 7))) {
+									nextPage = true;
+									page++;
+								}
+							} else if (word.startsWith("data-author")) {
+								String yazar = "";
+								if(word.endsWith("\"")){
+									yazar = word.substring(13, word.length()-1);
+								} else {
+									yazar = word.substring(13, word.length());
+									String next = token.next();
+									while(!next.endsWith("\"")){
+										yazar += " " + next;
+										next = token.next();
+									}
+									yazar += " " + next.substring(0,next.length()-1);
+								}
+								
+								Set<String> basliklar = new TreeSet<String>();
+								if (!yazarlar.containsKey(yazar)) {
+									yazarlar.put(yazar, basliklar);
+								}
+								basliklar = yazarlar.get(yazar);
+								basliklar.add(entry);
+								yazarlar.put(yazar, basliklar);
+							}
+							// token.close();
+						}
+					}
+					try {
+						Thread.sleep(100); // 1000 milliseconds is one second.
+					} catch (InterruptedException ex) {
+						Thread.currentThread().interrupt();
+					}
+				} catch (MalformedURLException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			System.out.println("✓  " + entry + " (" + page + " sayfa)");
+		}
+		long endTime = System.currentTimeMillis();
+		long duration = (endTime - startTime) / 1000;
+		System.out.println("Geçen süre: " + duration / 60 + " dakika " + duration % 60 + " saniye");
+		
+		System.out.println("\nOlası yazar listesi");
+		
+		for (String yazar : yazarlar.keySet()) {
+			int entrySize = yazarlar.get(yazar).size();
+			int n = 0;
+			if (entrySize > 1) {
+				System.out.print(entrySize + " " + yazar + " (");
+				for(String baslik : yazarlar.get(yazar)){
+					System.out.print(baslik);
+					n++;
+					if(n < entrySize){
+						System.out.print(", ");
+					}
+				}
+				System.out.println(")");
+			}
+		}
+		//c.close();
+		
+	}
+}
