@@ -78,11 +78,11 @@ public class EksiYazarBul {
 								if (!nextPage
 										&& !word.substring(17).equals(
 												compare.substring(15,
-														compare.length() - 7))) {
+														compare.length() - 11))) {
 									nextPage = true;
 									page++;
 								}
-							} else if (word.startsWith("data-author")) {
+							} else if (word.startsWith("data-author=")) {
 								String yazar = "";
 								if(word.endsWith("\"")){
 									yazar = word.substring(13, word.length()-1);
@@ -141,7 +141,7 @@ public class EksiYazarBul {
 				System.out.println(")");
 			}
 		}
-		//c.close();
+		c.close();
 		
 	}
 }
